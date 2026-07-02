@@ -3,6 +3,7 @@ import Sortable from "sortablejs";
 import type AgilePlugin from "./main";
 import { UNTRIAGED, TaskService } from "./taskService";
 import { TaskEditModal } from "./TaskEditModal";
+import { applyBadgeColor } from "./colors";
 import type { Column, Task } from "./types";
 
 export const VIEW_TYPE_KANBAN = "agile-kanban-view";
@@ -103,7 +104,16 @@ export class KanbanView extends ItemView {
 		colEl.dataset.status = col.status;
 
 		const header = colEl.createDiv({ cls: "agile-column-header" });
-		header.createSpan({ cls: "agile-column-title", text: col.status });
+		const title = header.createDiv({ cls: "agile-column-title" });
+		const statusColor =
+			col.status !== UNTRIAGED
+				? this.plugin.settings.colors.status?.[col.status]
+				: undefined;
+		const dotColor = statusColor?.bg ?? statusColor?.text;
+		if (dotColor) {
+			title.createSpan({ cls: "agile-column-dot" }).style.backgroundColor = dotColor;
+		}
+		title.createSpan({ text: col.status });
 		header.createSpan({ cls: "agile-column-count", text: String(col.tasks.length) });
 
 		const list = colEl.createDiv({ cls: "agile-card-list" });
@@ -124,21 +134,28 @@ export class KanbanView extends ItemView {
 
 		card.createDiv({ cls: "agile-card-title", text: task.title });
 
+		const colors = this.plugin.settings.colors;
 		const meta = card.createDiv({ cls: "agile-card-meta" });
 		if (task.priority) {
-			meta.createSpan({
+			const span = meta.createSpan({
 				cls: `agile-badge agile-prio-${task.priority.toLowerCase()}`,
 				text: task.priority,
 			});
+			const c = colors.priority?.[task.priority];
+			if (c) applyBadgeColor(span, c);
 		}
 		if (task.project) {
-			meta.createSpan({ cls: "agile-badge agile-project", text: task.project });
+			const span = meta.createSpan({ cls: "agile-badge agile-project", text: task.project });
+			const c = colors.project?.[task.project];
+			if (c) applyBadgeColor(span, c);
 		}
 		if (task.due) {
 			meta.createSpan({ cls: "agile-badge agile-due", text: `📅 ${task.due}` });
 		}
 		if (task.assignee) {
-			meta.createSpan({ cls: "agile-badge agile-assignee", text: `👤 ${task.assignee}` });
+			const span = meta.createSpan({ cls: "agile-badge agile-assignee", text: `👤 ${task.assignee}` });
+			const c = colors.assignee?.[task.assignee];
+			if (c) applyBadgeColor(span, c);
 		}
 
 		card.addEventListener("click", () => {

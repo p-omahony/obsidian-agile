@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type AgilePlugin from "./main";
+import type { BadgeColor } from "./colors";
 
 export interface AgileSettings {
 	/** Folder containing task notes (relative to the vault root). */
@@ -10,6 +11,12 @@ export interface AgileSettings {
 	statuses: string[];
 	/** If true, tasks with an unknown status are grouped in "No status". */
 	showUntriaged: boolean;
+	/**
+	 * Per-value badge colors (background + text), indexed by property then value.
+	 * e.g. { priority: { high: { bg: "#402b2b", text: "#ef5350" } } }.
+	 * The "status" key is used regardless of `statusField`.
+	 */
+	colors: Record<string, Record<string, BadgeColor>>;
 }
 
 export const DEFAULT_SETTINGS: AgileSettings = {
@@ -17,6 +24,7 @@ export const DEFAULT_SETTINGS: AgileSettings = {
 	statusField: "status",
 	statuses: ["To Do", "In Progress", "In Review", "Done"],
 	showUntriaged: true,
+	colors: {},
 };
 
 export class AgileSettingTab extends PluginSettingTab {

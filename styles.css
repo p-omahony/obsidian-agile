@@ -1,0 +1,149 @@
+/* ===== Agile Kanban board ===== */
+
+.agile-kanban {
+	padding: 0;
+	overflow: hidden;
+	height: 100%;
+}
+
+.agile-board {
+	display: flex;
+	flex-direction: row;
+	gap: 12px;
+	padding: 12px;
+	height: 100%;
+	overflow-x: auto;
+	align-items: flex-start;
+}
+
+.agile-column {
+	display: flex;
+	flex-direction: column;
+	flex: 0 0 280px;
+	max-height: 100%;
+	background-color: var(--background-secondary);
+	border-radius: 8px;
+	padding: 8px;
+}
+
+.agile-column-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 4px 6px 8px;
+	font-weight: 600;
+}
+
+.agile-column-title {
+	color: var(--text-normal);
+}
+
+.agile-column-count {
+	color: var(--text-muted);
+	font-size: 0.8em;
+	background-color: var(--background-modifier-border);
+	border-radius: 10px;
+	padding: 0 8px;
+}
+
+.agile-card-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	overflow-y: auto;
+	flex: 1 1 auto;
+	min-height: 24px;
+}
+
+.agile-card {
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	padding: 8px 10px;
+	cursor: pointer;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+	transition: border-color 0.1s ease, box-shadow 0.1s ease;
+}
+
+.agile-card:hover {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.agile-card-title {
+	font-weight: 500;
+	color: var(--text-normal);
+	margin-bottom: 6px;
+	line-height: 1.3;
+}
+
+.agile-card-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+}
+
+.agile-badge {
+	font-size: 0.72em;
+	padding: 1px 7px;
+	border-radius: 10px;
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+	white-space: nowrap;
+}
+
+/* Priority badges */
+.agile-prio-low {
+	background-color: rgba(120, 144, 156, 0.2);
+	color: #78909c;
+}
+.agile-prio-medium {
+	background-color: rgba(66, 165, 245, 0.2);
+	color: #42a5f5;
+}
+.agile-prio-high {
+	background-color: rgba(255, 167, 38, 0.2);
+	color: #ffa726;
+}
+.agile-prio-urgent {
+	background-color: rgba(239, 83, 80, 0.2);
+	color: #ef5350;
+}
+
+.agile-project {
+	background-color: rgba(126, 87, 194, 0.2);
+	color: #7e57c2;
+}
+
+.agile-add-card {
+	margin-top: 8px;
+	padding: 6px;
+	text-align: center;
+	color: var(--text-muted);
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 0.85em;
+	border: 1px dashed var(--background-modifier-border);
+}
+
+.agile-add-card:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+/* ===== Task edit modal ===== */
+.agile-edit-modal h3 {
+	margin-top: 0;
+	margin-bottom: 12px;
+}
+
+.agile-edit-modal input[type="text"],
+.agile-edit-modal input[type="date"] {
+	width: 100%;
+}
+
+/* Ghost state while dragging */
+.agile-card-ghost {
+	opacity: 0.4;
+	border: 1px dashed var(--interactive-accent);
+}

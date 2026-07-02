@@ -1,0 +1,9 @@
+{
+	"id": "agile",
+	"name": "Agile",
+	"version": "0.1.0",
+	"minAppVersion": "1.5.0",
+	"description": "Notion-style agile project management: a Kanban board built from your notes, where each task is a note with frontmatter.",
+	"author": "Paul O'Mahony",
+	"isDesktopOnly": false
+}

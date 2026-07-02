@@ -1,0 +1,29 @@
+{
+	"name": "obsidian-agile",
+	"version": "0.1.0",
+	"description": "Gestion de projet agile façon Notion pour Obsidian (Kanban, tâches, projets).",
+	"main": "main.js",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+	},
+	"keywords": [
+		"obsidian",
+		"agile",
+		"kanban",
+		"project-management"
+	],
+	"author": "Paul O'Mahony",
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^20.11.0",
+		"builtin-modules": "^3.3.0",
+		"esbuild": "^0.20.0",
+		"obsidian": "latest",
+		"typescript": "^5.4.0"
+	},
+	"dependencies": {
+		"sortablejs": "^1.15.2",
+		"@types/sortablejs": "^1.15.8"
+	}
+}

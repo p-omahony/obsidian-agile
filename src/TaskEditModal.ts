@@ -23,7 +23,9 @@ export class TaskEditModal extends Modal {
 	private status: string;
 	private priority: string;
 	private project: string;
+	private epic: string;
 	private assignee: string;
+	private start: string;
 	private due: string;
 
 	/** Pending per-value color edits (merged into settings on save). */
@@ -45,7 +47,9 @@ export class TaskEditModal extends Modal {
 		this.status = task.status === UNTRIAGED ? "" : task.status;
 		this.priority = task.priority ?? "";
 		this.project = task.project ?? "";
+		this.epic = task.epic ?? "";
 		this.assignee = task.assignee ?? "";
+		this.start = task.start ?? "";
 		this.due = task.due ?? "";
 
 		// Deep-copy existing colors so edits stay pending until save.
@@ -167,10 +171,21 @@ export class TaskEditModal extends Modal {
 			s.addText((t) => t.setPlaceholder("Project name").setValue(this.project).onChange(onChange))
 		);
 
+		// --- Epic ---
+		this.addRow("Epic", "epic", () => this.epic, (v) => (this.epic = v), (s, onChange) =>
+			s.addText((t) => t.setPlaceholder("Epic name").setValue(this.epic).onChange(onChange))
+		);
+
 		// --- Assignee ---
 		this.addRow("Assignee", "assignee", () => this.assignee, (v) => (this.assignee = v), (s, onChange) =>
 			s.addText((t) => t.setPlaceholder("Person").setValue(this.assignee).onChange(onChange))
 		);
+
+		// --- Start date ---
+		new Setting(contentEl).setName("Start date").addText((t) => {
+			t.inputEl.type = "date";
+			t.setValue(this.start).onChange((v) => (this.start = v));
+		});
 
 		// --- Due date ---
 		new Setting(contentEl).setName("Due date").addText((t) => {

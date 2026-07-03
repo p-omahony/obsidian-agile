@@ -2,6 +2,9 @@ import { App, PluginSettingTab, Setting } from "obsidian";
 import type AgilePlugin from "./main";
 import type { BadgeColor } from "./colors";
 
+/** Time axis granularity for the timeline view. */
+export type TimelineScale = "day" | "week" | "month";
+
 /** A single Kanban board: an independent configuration over the vault's notes. */
 export interface BoardConfig {
 	/** Stable unique identifier (persisted in the view state). */
@@ -16,6 +19,8 @@ export interface BoardConfig {
 	statuses: string[];
 	/** If true, tasks with an unknown status are grouped in "No status". */
 	showUntriaged: boolean;
+	/** Time axis granularity used by the timeline view. */
+	timelineScale: TimelineScale;
 	/**
 	 * Per-value badge colors (background + text), indexed by property then value.
 	 * e.g. { priority: { high: { bg: "#402b2b", text: "#ef5350" } } }.
@@ -45,6 +50,7 @@ export function defaultBoard(name = "Board"): BoardConfig {
 		statusField: "status",
 		statuses: ["To Do", "In Progress", "In Review", "Done"],
 		showUntriaged: true,
+		timelineScale: "week",
 		colors: {},
 	};
 }
@@ -180,6 +186,21 @@ export class AgileSettingTab extends PluginSettingTab {
 					.setValue(board.showUntriaged)
 					.onChange(async (value) => {
 						board.showUntriaged = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Timeline scale")
+			.setDesc("Granularity of the time axis in the timeline view.")
+			.addDropdown((dd) =>
+				dd
+					.addOption("day", "Day")
+					.addOption("week", "Week")
+					.addOption("month", "Month")
+					.setValue(board.timelineScale ?? "week")
+					.onChange(async (value) => {
+						board.timelineScale = value as TimelineScale;
 						await this.plugin.saveSettings();
 					})
 			);

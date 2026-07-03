@@ -4,6 +4,40 @@
 	padding: 0;
 	overflow: hidden;
 	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+
+/* ===== Toolbar (Board / Timeline switch) ===== */
+.agile-toolbar {
+	display: flex;
+	padding: 8px 12px 0;
+	flex: 0 0 auto;
+}
+
+.agile-toolbar-switch {
+	display: inline-flex;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.agile-toolbar-btn {
+	padding: 4px 14px;
+	font-size: 0.85em;
+	cursor: pointer;
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+}
+
+.agile-toolbar-btn:hover {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.agile-toolbar-btn.is-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
 }
 
 .agile-board {
@@ -11,7 +45,8 @@
 	flex-direction: row;
 	gap: 12px;
 	padding: 12px;
-	height: 100%;
+	flex: 1 1 auto;
+	min-height: 0;
 	overflow-x: auto;
 	align-items: flex-start;
 }
@@ -125,6 +160,11 @@
 	color: #7e57c2;
 }
 
+.agile-epic {
+	background-color: rgba(38, 166, 154, 0.2);
+	color: #26a69a;
+}
+
 .agile-add-card {
 	margin-top: 8px;
 	padding: 6px;
@@ -156,4 +196,182 @@
 .agile-card-ghost {
 	opacity: 0.4;
 	border: 1px dashed var(--interactive-accent);
+}
+
+/* ===== Timeline (Gantt) ===== */
+.agile-timeline {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	padding: 12px;
+	overflow-y: auto;
+}
+
+.agile-timeline-empty {
+	color: var(--text-muted);
+	padding: 24px 4px;
+}
+
+.agile-timeline-layout {
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+/* Left sticky column: epic labels */
+.agile-timeline-side {
+	flex: 0 0 160px;
+	display: flex;
+	flex-direction: column;
+	background-color: var(--background-secondary);
+	border-right: 1px solid var(--background-modifier-border);
+	z-index: 1;
+}
+
+.agile-timeline-side-header {
+	height: 28px;
+	flex: 0 0 auto;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.agile-timeline-side-label {
+	height: 40px;
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 0 10px;
+	font-weight: 500;
+	font-size: 0.85em;
+	color: var(--text-normal);
+	border-bottom: 1px solid var(--background-modifier-border);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.agile-timeline-side-dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	flex: 0 0 auto;
+}
+
+/* Right scrollable area: axis + lanes */
+.agile-timeline-main {
+	flex: 1 1 auto;
+	overflow-x: auto;
+}
+
+.agile-timeline-axis {
+	position: relative;
+	height: 28px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.agile-timeline-tick {
+	position: absolute;
+	top: 0;
+	height: 28px;
+	padding-left: 4px;
+	font-size: 0.72em;
+	color: var(--text-muted);
+	line-height: 28px;
+	border-left: 1px solid var(--background-modifier-border);
+	white-space: nowrap;
+}
+
+.agile-timeline-lane {
+	position: relative;
+	height: 40px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.agile-timeline-bar {
+	position: absolute;
+	top: 9px;
+	height: 22px;
+	line-height: 22px;
+	padding: 0 8px;
+	border-radius: 6px;
+	font-size: 0.75em;
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	cursor: pointer;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.agile-timeline-bar:hover {
+	filter: brightness(1.1);
+}
+
+.agile-timeline-milestone-wrap {
+	position: absolute;
+	top: 9px;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	height: 22px;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.agile-timeline-milestone {
+	width: 12px;
+	height: 12px;
+	flex: 0 0 auto;
+	transform: rotate(45deg);
+	background-color: var(--interactive-accent);
+	border-radius: 2px;
+}
+
+.agile-timeline-milestone-label {
+	font-size: 0.75em;
+	color: var(--text-normal);
+}
+
+.agile-timeline-milestone-wrap:hover .agile-timeline-milestone-label {
+	color: var(--interactive-accent);
+}
+
+/* Unscheduled tasks */
+.agile-timeline-unscheduled {
+	margin-top: 16px;
+}
+
+.agile-timeline-unscheduled-header {
+	font-weight: 600;
+	color: var(--text-muted);
+	font-size: 0.8em;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-bottom: 6px;
+}
+
+.agile-timeline-unscheduled-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.agile-timeline-unscheduled-item {
+	padding: 3px 10px;
+	border-radius: 12px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	font-size: 0.8em;
+	color: var(--text-normal);
+	cursor: pointer;
+}
+
+.agile-timeline-unscheduled-item:hover {
+	border-color: var(--interactive-accent);
+	color: var(--interactive-accent);
 }

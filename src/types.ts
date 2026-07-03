@@ -7,7 +7,9 @@ export interface Task {
 	status: string;
 	priority?: string;
 	project?: string;
+	epic?: string;
 	assignee?: string;
+	start?: string;
 	due?: string;
 }
 
@@ -21,5 +23,5 @@ export const PRIORITIES = ["low", "medium", "high", "urgent"] as const;
 export type Priority = (typeof PRIORITIES)[number];
 
 /** Non-status task fields, in note/UI order. Single source of truth for the schema. */
-export const TASK_FIELDS = ["priority", "project", "assignee", "due"] as const;
+export const TASK_FIELDS = ["priority", "project", "epic", "assignee", "start", "due"] as const;
 export type TaskField = (typeof TASK_FIELDS)[number];

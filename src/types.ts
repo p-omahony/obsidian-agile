@@ -19,3 +19,7 @@ export interface Column {
 
 export const PRIORITIES = ["low", "medium", "high", "urgent"] as const;
 export type Priority = (typeof PRIORITIES)[number];
+
+/** Non-status task fields, in note/UI order. Single source of truth for the schema. */
+export const TASK_FIELDS = ["priority", "project", "assignee", "due"] as const;
+export type TaskField = (typeof TASK_FIELDS)[number];

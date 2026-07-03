@@ -1,9 +1,13 @@
 import { App, normalizePath, TFile } from "obsidian";
 import type { BoardConfig } from "./settings";
-import type { Task } from "./types";
+import { TASK_FIELDS } from "./types";
+import type { Task, TaskField } from "./types";
 
 /** Virtual status for tasks with no known status. */
 export const UNTRIAGED = "No status";
+
+/** Pre-filled frontmatter values for a freshly created task (blank unless listed). */
+const NEW_TASK_DEFAULTS: Partial<Record<TaskField, string>> = { priority: "medium" };
 
 export class TaskService {
 	constructor(private app: App, private board: BoardConfig) {}
@@ -36,15 +40,10 @@ export class TaskService {
 		const h1 = cache?.headings?.find((h) => h.level === 1);
 		const title = h1?.heading ?? file.basename;
 
-		return {
-			file,
-			title,
-			status,
-			priority: fm ? this.toStr(fm["priority"]) : undefined,
-			project: fm ? this.toStr(fm["project"]) : undefined,
-			assignee: fm ? this.toStr(fm["assignee"]) : undefined,
-			due: fm ? this.toStr(fm["due"]) : undefined,
-		};
+		const fields = Object.fromEntries(
+			TASK_FIELDS.map((f) => [f, fm ? this.toStr(fm[f]) : undefined])
+		);
+		return { file, title, status, ...fields };
 	}
 
 	/** Retrieves every task in the configured folder. */
@@ -71,10 +70,7 @@ export class TaskService {
 		const content = [
 			"---",
 			`${field}: ${statusValue}`,
-			"priority: medium",
-			"project: ",
-			"assignee: ",
-			"due: ",
+			...TASK_FIELDS.map((f) => `${f}: ${NEW_TASK_DEFAULTS[f] ?? ""}`),
 			"---",
 			"",
 			"# New task",

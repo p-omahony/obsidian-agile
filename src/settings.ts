@@ -141,46 +141,32 @@ export class AgileSettingTab extends PluginSettingTab {
 				})
 		);
 
-		new Setting(containerEl)
-			.setName("Board name")
-			.setDesc("Shown in the tab title and the board selection menu.")
-			.addText((text) =>
-				text
-					.setPlaceholder("Board")
-					.setValue(board.name)
-					.onChange(async (value) => {
-						board.name = value.trim();
-						await this.plugin.saveSettings();
-					})
-			);
+		this.textSetting(
+			containerEl,
+			"Board name",
+			"Shown in the tab title and the board selection menu.",
+			"Board",
+			() => board.name,
+			(v) => (board.name = v)
+		);
 
-		new Setting(containerEl)
-			.setName("Tasks folder")
-			.setDesc(
-				"Vault folder scanned to build the board. Leave empty to scan the whole vault."
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder("Tasks")
-					.setValue(board.tasksFolder)
-					.onChange(async (value) => {
-						board.tasksFolder = value.trim();
-						await this.plugin.saveSettings();
-					})
-			);
+		this.textSetting(
+			containerEl,
+			"Tasks folder",
+			"Vault folder scanned to build the board. Leave empty to scan the whole vault.",
+			"Tasks",
+			() => board.tasksFolder,
+			(v) => (board.tasksFolder = v)
+		);
 
-		new Setting(containerEl)
-			.setName("Status field")
-			.setDesc("Frontmatter field used to sort tasks into columns.")
-			.addText((text) =>
-				text
-					.setPlaceholder("status")
-					.setValue(board.statusField)
-					.onChange(async (value) => {
-						board.statusField = value.trim() || "status";
-						await this.plugin.saveSettings();
-					})
-			);
+		this.textSetting(
+			containerEl,
+			"Status field",
+			"Frontmatter field used to sort tasks into columns.",
+			"status",
+			() => board.statusField,
+			(v) => (board.statusField = v || "status")
+		);
 
 		this.renderColumns(containerEl, board);
 
@@ -197,6 +183,36 @@ export class AgileSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					})
 			);
+	}
+
+	/** A single text row whose value is trimmed and persisted on every change. */
+	private textSetting(
+		containerEl: HTMLElement,
+		name: string,
+		desc: string,
+		placeholder: string,
+		get: () => string,
+		set: (value: string) => void
+	): void {
+		new Setting(containerEl)
+			.setName(name)
+			.setDesc(desc)
+			.addText((text) =>
+				text
+					.setPlaceholder(placeholder)
+					.setValue(get())
+					.onChange(async (value) => {
+						set(value.trim());
+						await this.plugin.saveSettings();
+					})
+			);
+	}
+
+	/** Swaps two statuses, persists, and re-renders the settings tab. */
+	private async swap(statuses: string[], i: number, j: number): Promise<void> {
+		[statuses[i], statuses[j]] = [statuses[j], statuses[i]];
+		await this.plugin.saveSettings();
+		this.display();
 	}
 
 	/** Editable list of columns: rename, reorder, delete, add. */
@@ -223,22 +239,14 @@ export class AgileSettingTab extends PluginSettingTab {
 					.setIcon("arrow-up")
 					.setTooltip("Move up")
 					.setDisabled(i === 0)
-					.onClick(async () => {
-						[statuses[i - 1], statuses[i]] = [statuses[i], statuses[i - 1]];
-						await this.plugin.saveSettings();
-						this.display();
-					})
+					.onClick(() => this.swap(statuses, i, i - 1))
 			);
 			setting.addExtraButton((b) =>
 				b
 					.setIcon("arrow-down")
 					.setTooltip("Move down")
 					.setDisabled(i === statuses.length - 1)
-					.onClick(async () => {
-						[statuses[i + 1], statuses[i]] = [statuses[i], statuses[i + 1]];
-						await this.plugin.saveSettings();
-						this.display();
-					})
+					.onClick(() => this.swap(statuses, i, i + 1))
 			);
 			setting.addExtraButton((b) =>
 				b

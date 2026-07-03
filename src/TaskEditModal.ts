@@ -4,7 +4,7 @@ import type { BoardConfig } from "./settings";
 import { UNTRIAGED, TaskService } from "./taskService";
 import { DEFAULT_BADGE_COLOR, PRIORITY_DEFAULT_COLORS } from "./colors";
 import type { BadgeColor } from "./colors";
-import { PRIORITIES } from "./types";
+import { PRIORITIES, TASK_FIELDS } from "./types";
 import type { Task } from "./types";
 
 type Channel = "bg" | "text";
@@ -76,6 +76,27 @@ export class TaskEditModal extends Modal {
 	}
 
 	/**
+	 * Builds a color-aware property row: creates the Setting, delegates the input
+	 * widget to `buildControl` (wired to update the value + resync the swatches),
+	 * then attaches the background/text color pickers.
+	 */
+	private addRow(
+		name: string,
+		prop: string,
+		getValue: () => string,
+		setValue: (v: string) => void,
+		buildControl: (setting: Setting, onChange: (v: string) => void) => void
+	): void {
+		const setting = new Setting(this.contentEl).setName(name);
+		let resync = () => {};
+		buildControl(setting, (v) => {
+			setValue(v);
+			resync();
+		});
+		resync = this.addColorControls(setting, prop, getValue);
+	}
+
+	/**
 	 * Adds background + text color pickers to a Setting row, keyed by the property's
 	 * current value. Returns a resync() to refresh both swatches when the value changes.
 	 */
@@ -119,65 +140,37 @@ export class TaskEditModal extends Modal {
 		contentEl.createEl("h3", { text: this.task.title });
 
 		// --- Status ---
-		const statusSetting = new Setting(contentEl).setName("Status");
-		let syncStatus = () => {};
-		statusSetting.addDropdown((dd) => {
-			dd.addOption("", "— No status —");
-			const options = [...this.board.statuses];
-			if (this.status && !options.includes(this.status)) {
-				options.push(this.status);
-			}
-			options.forEach((s) => dd.addOption(s, s));
-			dd.setValue(this.status).onChange((v) => {
-				this.status = v;
-				syncStatus();
-			});
-		});
-		syncStatus = this.addColorControls(statusSetting, "status", () => this.status);
+		this.addRow("Status", "status", () => this.status, (v) => (this.status = v), (s, onChange) =>
+			s.addDropdown((dd) => {
+				dd.addOption("", "— No status —");
+				const options = [...this.board.statuses];
+				if (this.status && !options.includes(this.status)) options.push(this.status);
+				options.forEach((o) => dd.addOption(o, o));
+				dd.setValue(this.status).onChange(onChange);
+			})
+		);
 
 		// --- Priority ---
-		const prioSetting = new Setting(contentEl).setName("Priority");
-		let syncPrio = () => {};
-		prioSetting.addDropdown((dd) => {
-			dd.addOption("", "—");
-			PRIORITIES.forEach((p) => dd.addOption(p, p));
-			if (this.priority && !PRIORITIES.includes(this.priority as never)) {
-				dd.addOption(this.priority, this.priority);
-			}
-			dd.setValue(this.priority).onChange((v) => {
-				this.priority = v;
-				syncPrio();
-			});
-		});
-		syncPrio = this.addColorControls(prioSetting, "priority", () => this.priority);
+		this.addRow("Priority", "priority", () => this.priority, (v) => (this.priority = v), (s, onChange) =>
+			s.addDropdown((dd) => {
+				dd.addOption("", "—");
+				PRIORITIES.forEach((p) => dd.addOption(p, p));
+				if (this.priority && !PRIORITIES.includes(this.priority as never)) {
+					dd.addOption(this.priority, this.priority);
+				}
+				dd.setValue(this.priority).onChange(onChange);
+			})
+		);
 
 		// --- Project ---
-		const projectSetting = new Setting(contentEl).setName("Project");
-		let syncProject = () => {};
-		projectSetting.addText((t) =>
-			t
-				.setPlaceholder("Project name")
-				.setValue(this.project)
-				.onChange((v) => {
-					this.project = v;
-					syncProject();
-				})
+		this.addRow("Project", "project", () => this.project, (v) => (this.project = v), (s, onChange) =>
+			s.addText((t) => t.setPlaceholder("Project name").setValue(this.project).onChange(onChange))
 		);
-		syncProject = this.addColorControls(projectSetting, "project", () => this.project);
 
 		// --- Assignee ---
-		const assigneeSetting = new Setting(contentEl).setName("Assignee");
-		let syncAssignee = () => {};
-		assigneeSetting.addText((t) =>
-			t
-				.setPlaceholder("Person")
-				.setValue(this.assignee)
-				.onChange((v) => {
-					this.assignee = v;
-					syncAssignee();
-				})
+		this.addRow("Assignee", "assignee", () => this.assignee, (v) => (this.assignee = v), (s, onChange) =>
+			s.addText((t) => t.setPlaceholder("Person").setValue(this.assignee).onChange(onChange))
 		);
-		syncAssignee = this.addColorControls(assigneeSetting, "assignee", () => this.assignee);
 
 		// --- Due date ---
 		new Setting(contentEl).setName("Due date").addText((t) => {
@@ -204,13 +197,9 @@ export class TaskEditModal extends Modal {
 	private async save(): Promise<void> {
 		const statusField = this.board.statusField;
 		try {
-			await this.service.updateFields(this.task.file, {
-				[statusField]: this.status,
-				priority: this.priority,
-				project: this.project,
-				assignee: this.assignee,
-				due: this.due,
-			});
+			const fields: Record<string, string> = { [statusField]: this.status };
+			for (const f of TASK_FIELDS) fields[f] = this[f];
+			await this.service.updateFields(this.task.file, fields);
 			// Persist pending color edits on this board and refresh open boards.
 			this.board.colors = this.pendingColors;
 			await this.plugin.saveSettings();

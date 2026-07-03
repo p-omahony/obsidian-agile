@@ -1,5 +1,6 @@
 import { App, ColorComponent, Modal, Notice, Setting } from "obsidian";
 import type AgilePlugin from "./main";
+import type { BoardConfig } from "./settings";
 import { UNTRIAGED, TaskService } from "./taskService";
 import { DEFAULT_BADGE_COLOR, PRIORITY_DEFAULT_COLORS } from "./colors";
 import type { BadgeColor } from "./colors";
@@ -15,6 +16,7 @@ type Channel = "bg" | "text";
 export class TaskEditModal extends Modal {
 	private plugin: AgilePlugin;
 	private service: TaskService;
+	private board: BoardConfig;
 	private task: Task;
 
 	// Values being edited.
@@ -27,10 +29,17 @@ export class TaskEditModal extends Modal {
 	/** Pending per-value color edits (merged into settings on save). */
 	private pendingColors: Record<string, Record<string, BadgeColor>>;
 
-	constructor(app: App, plugin: AgilePlugin, task: Task, service: TaskService) {
+	constructor(
+		app: App,
+		plugin: AgilePlugin,
+		task: Task,
+		service: TaskService,
+		board: BoardConfig
+	) {
 		super(app);
 		this.plugin = plugin;
 		this.service = service;
+		this.board = board;
 		this.task = task;
 
 		this.status = task.status === UNTRIAGED ? "" : task.status;
@@ -41,7 +50,7 @@ export class TaskEditModal extends Modal {
 
 		// Deep-copy existing colors so edits stay pending until save.
 		this.pendingColors = {};
-		for (const [prop, byValue] of Object.entries(this.plugin.settings.colors)) {
+		for (const [prop, byValue] of Object.entries(this.board.colors)) {
 			this.pendingColors[prop] = {};
 			for (const [value, color] of Object.entries(byValue)) {
 				this.pendingColors[prop][value] = { ...color };
@@ -114,7 +123,7 @@ export class TaskEditModal extends Modal {
 		let syncStatus = () => {};
 		statusSetting.addDropdown((dd) => {
 			dd.addOption("", "— No status —");
-			const options = [...this.plugin.settings.statuses];
+			const options = [...this.board.statuses];
 			if (this.status && !options.includes(this.status)) {
 				options.push(this.status);
 			}
@@ -193,7 +202,7 @@ export class TaskEditModal extends Modal {
 	}
 
 	private async save(): Promise<void> {
-		const statusField = this.plugin.settings.statusField;
+		const statusField = this.board.statusField;
 		try {
 			await this.service.updateFields(this.task.file, {
 				[statusField]: this.status,
@@ -202,8 +211,8 @@ export class TaskEditModal extends Modal {
 				assignee: this.assignee,
 				due: this.due,
 			});
-			// Persist pending color edits globally and refresh open boards.
-			this.plugin.settings.colors = this.pendingColors;
+			// Persist pending color edits on this board and refresh open boards.
+			this.board.colors = this.pendingColors;
 			await this.plugin.saveSettings();
 			this.close();
 		} catch (e) {

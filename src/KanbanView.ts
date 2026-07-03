@@ -1,6 +1,7 @@
 import { ItemView, Notice, TFile, WorkspaceLeaf, debounce } from "obsidian";
 import Sortable from "sortablejs";
 import type AgilePlugin from "./main";
+import type { BoardConfig } from "./settings";
 import { UNTRIAGED, TaskService } from "./taskService";
 import { TaskEditModal } from "./TaskEditModal";
 import { applyBadgeColor } from "./colors";
@@ -10,15 +11,16 @@ export const VIEW_TYPE_KANBAN = "agile-kanban-view";
 
 export class KanbanView extends ItemView {
 	private plugin: AgilePlugin;
-	private service: TaskService;
+	private service: TaskService | null = null;
 	private sortables: Sortable[] = [];
+	/** Which board this view displays (persisted in the view state). */
+	boardId = "";
 	/** Debounced re-render, reused for vault/cache events. */
 	private scheduleRender = debounce(() => this.render(), 200, true);
 
 	constructor(leaf: WorkspaceLeaf, plugin: AgilePlugin) {
 		super(leaf);
 		this.plugin = plugin;
-		this.service = new TaskService(this.app, plugin.settings);
 	}
 
 	getViewType(): string {
@@ -26,11 +28,29 @@ export class KanbanView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return "Agile Kanban";
+		return this.resolveBoard()?.name ?? "Agile Kanban";
 	}
 
 	getIcon(): string {
 		return "kanban-square";
+	}
+
+	getState(): Record<string, unknown> {
+		return { ...super.getState(), boardId: this.boardId };
+	}
+
+	async setState(state: unknown, result: unknown): Promise<void> {
+		const boardId = (state as { boardId?: string } | null)?.boardId;
+		if (typeof boardId === "string") this.boardId = boardId;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		await super.setState(state as any, result as any);
+		this.render();
+	}
+
+	/** Resolves this view's board, falling back to the first defined one. */
+	private resolveBoard(): BoardConfig | undefined {
+		const boards = this.plugin.settings.boards;
+		return boards.find((b) => b.id === this.boardId) ?? boards[0];
 	}
 
 	async onOpen(): Promise<void> {
@@ -57,8 +77,8 @@ export class KanbanView extends ItemView {
 	}
 
 	/** Groups tasks by status, honoring the configured column order. */
-	private buildColumns(tasks: Task[]): Column[] {
-		const { statuses, showUntriaged } = this.plugin.settings;
+	private buildColumns(tasks: Task[], board: BoardConfig): Column[] {
+		const { statuses, showUntriaged } = board;
 		const columns: Column[] = statuses.map((status) => ({ status, tasks: [] }));
 		const index = new Map(columns.map((c) => [c.status, c]));
 
@@ -84,30 +104,33 @@ export class KanbanView extends ItemView {
 
 	private render(): void {
 		// The view may have been reopened with changed settings.
-		this.service = new TaskService(this.app, this.plugin.settings);
+		const board = this.resolveBoard();
 		this.destroySortables();
 
 		const root = this.contentEl;
 		root.empty();
 		root.addClass("agile-kanban");
 
-		const board = root.createDiv({ cls: "agile-board" });
-		const columns = this.buildColumns(this.service.getTasks());
+		if (!board) return;
+		this.service = new TaskService(this.app, board);
+
+		const boardEl = root.createDiv({ cls: "agile-board" });
+		const columns = this.buildColumns(this.service.getTasks(), board);
 
 		for (const col of columns) {
-			this.renderColumn(board, col);
+			this.renderColumn(boardEl, col, board);
 		}
 	}
 
-	private renderColumn(board: HTMLElement, col: Column): void {
-		const colEl = board.createDiv({ cls: "agile-column" });
+	private renderColumn(boardEl: HTMLElement, col: Column, board: BoardConfig): void {
+		const colEl = boardEl.createDiv({ cls: "agile-column" });
 		colEl.dataset.status = col.status;
 
 		const header = colEl.createDiv({ cls: "agile-column-header" });
 		const title = header.createDiv({ cls: "agile-column-title" });
 		const statusColor =
 			col.status !== UNTRIAGED
-				? this.plugin.settings.colors.status?.[col.status]
+				? board.colors.status?.[col.status]
 				: undefined;
 		const dotColor = statusColor?.bg ?? statusColor?.text;
 		if (dotColor) {
@@ -119,7 +142,7 @@ export class KanbanView extends ItemView {
 		const list = colEl.createDiv({ cls: "agile-card-list" });
 		list.dataset.status = col.status;
 		for (const task of col.tasks) {
-			this.renderCard(list, task);
+			this.renderCard(list, task, board);
 		}
 
 		const addBtn = colEl.createDiv({ cls: "agile-add-card", text: "+ New task" });
@@ -128,13 +151,13 @@ export class KanbanView extends ItemView {
 		this.enableDragAndDrop(list);
 	}
 
-	private renderCard(list: HTMLElement, task: Task): void {
+	private renderCard(list: HTMLElement, task: Task, board: BoardConfig): void {
 		const card = list.createDiv({ cls: "agile-card" });
 		card.dataset.path = task.file.path;
 
 		card.createDiv({ cls: "agile-card-title", text: task.title });
 
-		const colors = this.plugin.settings.colors;
+		const colors = board.colors;
 		const meta = card.createDiv({ cls: "agile-card-meta" });
 		if (task.priority) {
 			const span = meta.createSpan({
@@ -159,7 +182,9 @@ export class KanbanView extends ItemView {
 		}
 
 		card.addEventListener("click", () => {
-			new TaskEditModal(this.app, this.plugin, task, this.service).open();
+			if (this.service) {
+				new TaskEditModal(this.app, this.plugin, task, this.service, board).open();
+			}
 		});
 	}
 
@@ -176,7 +201,7 @@ export class KanbanView extends ItemView {
 				if (!path || !newStatus || newStatus === oldStatus) return;
 
 				const file = this.app.vault.getAbstractFileByPath(path);
-				if (file instanceof TFile) {
+				if (file instanceof TFile && this.service) {
 					this.service.updateStatus(file, newStatus).catch((e) => {
 						console.error("Agile: failed to update status", e);
 						new Notice("Agile: could not update the status.");
@@ -189,6 +214,7 @@ export class KanbanView extends ItemView {
 	}
 
 	private async onCreate(status: string): Promise<void> {
+		if (!this.service) return;
 		try {
 			const file = await this.service.createTask(status);
 			await this.app.workspace.getLeaf(false).openFile(file);

@@ -2,7 +2,12 @@ import { App, PluginSettingTab, Setting } from "obsidian";
 import type AgilePlugin from "./main";
 import type { BadgeColor } from "./colors";
 
-export interface AgileSettings {
+/** A single Kanban board: an independent configuration over the vault's notes. */
+export interface BoardConfig {
+	/** Stable unique identifier (persisted in the view state). */
+	id: string;
+	/** Display name (tab title, selection menu). */
+	name: string;
 	/** Folder containing task notes (relative to the vault root). */
 	tasksFolder: string;
 	/** Name of the frontmatter field holding the status. */
@@ -19,13 +24,75 @@ export interface AgileSettings {
 	colors: Record<string, Record<string, BadgeColor>>;
 }
 
+export interface AgileSettings {
+	/** Every board defined in this vault (at least one). */
+	boards: BoardConfig[];
+}
+
+/** Generates a reasonably unique id without relying on external state. */
+function generateId(): string {
+	const c = (globalThis as { crypto?: Crypto }).crypto;
+	if (c?.randomUUID) return c.randomUUID();
+	return `board-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
+}
+
+/** A fresh board with the historical defaults. */
+export function defaultBoard(name = "Board"): BoardConfig {
+	return {
+		id: generateId(),
+		name,
+		tasksFolder: "Tasks",
+		statusField: "status",
+		statuses: ["To Do", "In Progress", "In Review", "Done"],
+		showUntriaged: true,
+		colors: {},
+	};
+}
+
 export const DEFAULT_SETTINGS: AgileSettings = {
-	tasksFolder: "Tasks",
-	statusField: "status",
-	statuses: ["To Do", "In Progress", "In Review", "Done"],
-	showUntriaged: true,
-	colors: {},
+	boards: [defaultBoard()],
 };
+
+/** Shape of the pre-boards (v1) settings, kept for migration. */
+interface LegacySettings {
+	tasksFolder?: string;
+	statusField?: string;
+	statuses?: string[];
+	showUntriaged?: boolean;
+	colors?: Record<string, Record<string, BadgeColor>>;
+}
+
+/**
+ * Normalizes raw persisted data into the current settings shape.
+ * - Empty/absent → the default single board.
+ * - Legacy (top-level `statuses`, no `boards`) → wrapped into one "Board".
+ * - Current shape → returned as-is (with a safety net for an empty board list).
+ */
+export function migrateSettings(raw: unknown): AgileSettings {
+	const data = (raw ?? {}) as Partial<AgileSettings> & LegacySettings;
+
+	if (Array.isArray(data.boards) && data.boards.length > 0) {
+		return { boards: data.boards };
+	}
+
+	if (Array.isArray(data.statuses)) {
+		const board = defaultBoard();
+		return {
+			boards: [
+				{
+					...board,
+					tasksFolder: data.tasksFolder ?? board.tasksFolder,
+					statusField: data.statusField ?? board.statusField,
+					statuses: data.statuses,
+					showUntriaged: data.showUntriaged ?? board.showUntriaged,
+					colors: data.colors ?? board.colors,
+				},
+			],
+		};
+	}
+
+	return { boards: [defaultBoard()] };
+}
 
 export class AgileSettingTab extends PluginSettingTab {
 	plugin: AgilePlugin;
@@ -41,6 +108,52 @@ export class AgileSettingTab extends PluginSettingTab {
 
 		containerEl.createEl("h2", { text: "Agile settings" });
 
+		this.plugin.settings.boards.forEach((board, i) => {
+			this.renderBoard(containerEl, board, i);
+		});
+
+		new Setting(containerEl).addButton((b) =>
+			b
+				.setButtonText("+ Add board")
+				.setCta()
+				.onClick(async () => {
+					this.plugin.settings.boards.push(defaultBoard("New board"));
+					await this.plugin.saveSettings();
+					this.display();
+				})
+		);
+	}
+
+	/** Renders the editable configuration for a single board. */
+	private renderBoard(containerEl: HTMLElement, board: BoardConfig, i: number): void {
+		const boards = this.plugin.settings.boards;
+
+		const heading = new Setting(containerEl).setName(board.name || "Board").setHeading();
+		heading.addExtraButton((b) =>
+			b
+				.setIcon("trash")
+				.setTooltip("Delete board")
+				.setDisabled(boards.length <= 1)
+				.onClick(async () => {
+					boards.splice(i, 1);
+					await this.plugin.saveSettings();
+					this.display();
+				})
+		);
+
+		new Setting(containerEl)
+			.setName("Board name")
+			.setDesc("Shown in the tab title and the board selection menu.")
+			.addText((text) =>
+				text
+					.setPlaceholder("Board")
+					.setValue(board.name)
+					.onChange(async (value) => {
+						board.name = value.trim();
+						await this.plugin.saveSettings();
+					})
+			);
+
 		new Setting(containerEl)
 			.setName("Tasks folder")
 			.setDesc(
@@ -49,9 +162,9 @@ export class AgileSettingTab extends PluginSettingTab {
 			.addText((text) =>
 				text
 					.setPlaceholder("Tasks")
-					.setValue(this.plugin.settings.tasksFolder)
+					.setValue(board.tasksFolder)
 					.onChange(async (value) => {
-						this.plugin.settings.tasksFolder = value.trim();
+						board.tasksFolder = value.trim();
 						await this.plugin.saveSettings();
 					})
 			);
@@ -62,14 +175,14 @@ export class AgileSettingTab extends PluginSettingTab {
 			.addText((text) =>
 				text
 					.setPlaceholder("status")
-					.setValue(this.plugin.settings.statusField)
+					.setValue(board.statusField)
 					.onChange(async (value) => {
-						this.plugin.settings.statusField = value.trim() || "status";
+						board.statusField = value.trim() || "status";
 						await this.plugin.saveSettings();
 					})
 			);
 
-		this.renderColumns(containerEl);
+		this.renderColumns(containerEl, board);
 
 		new Setting(containerEl)
 			.setName('Show the "No status" column')
@@ -78,17 +191,17 @@ export class AgileSettingTab extends PluginSettingTab {
 			)
 			.addToggle((toggle) =>
 				toggle
-					.setValue(this.plugin.settings.showUntriaged)
+					.setValue(board.showUntriaged)
 					.onChange(async (value) => {
-						this.plugin.settings.showUntriaged = value;
+						board.showUntriaged = value;
 						await this.plugin.saveSettings();
 					})
 			);
 	}
 
 	/** Editable list of columns: rename, reorder, delete, add. */
-	private renderColumns(containerEl: HTMLElement): void {
-		const statuses = this.plugin.settings.statuses;
+	private renderColumns(containerEl: HTMLElement, board: BoardConfig): void {
+		const statuses = board.statuses;
 
 		new Setting(containerEl)
 			.setName("Columns (statuses)")
@@ -142,7 +255,6 @@ export class AgileSettingTab extends PluginSettingTab {
 		new Setting(containerEl).addButton((b) =>
 			b
 				.setButtonText("+ Add column")
-				.setCta()
 				.onClick(async () => {
 					statuses.push("New column");
 					await this.plugin.saveSettings();

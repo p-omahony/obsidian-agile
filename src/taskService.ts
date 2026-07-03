@@ -1,16 +1,16 @@
 import { App, normalizePath, TFile } from "obsidian";
-import type { AgileSettings } from "./settings";
+import type { BoardConfig } from "./settings";
 import type { Task } from "./types";
 
 /** Virtual status for tasks with no known status. */
 export const UNTRIAGED = "No status";
 
 export class TaskService {
-	constructor(private app: App, private settings: AgileSettings) {}
+	constructor(private app: App, private board: BoardConfig) {}
 
 	/** True if the file belongs to the configured tasks folder. */
 	private inFolder(file: TFile): boolean {
-		const folder = this.settings.tasksFolder.trim();
+		const folder = this.board.tasksFolder.trim();
 		if (folder === "") return true;
 		const prefix = normalizePath(folder) + "/";
 		return file.path.startsWith(prefix);
@@ -27,7 +27,7 @@ export class TaskService {
 	private buildTask(file: TFile): Task | null {
 		const cache = this.app.metadataCache.getFileCache(file);
 		const fm = cache?.frontmatter;
-		const field = this.settings.statusField;
+		const field = this.board.statusField;
 
 		const rawStatus = fm ? this.toStr(fm[field]) : undefined;
 		const status = rawStatus && rawStatus.length > 0 ? rawStatus : UNTRIAGED;
@@ -61,11 +61,11 @@ export class TaskService {
 	 * Returns the created file.
 	 */
 	async createTask(status: string): Promise<TFile> {
-		const folder = this.settings.tasksFolder.trim();
+		const folder = this.board.tasksFolder.trim();
 		await this.ensureFolder(folder);
 
 		const path = this.uniqueName(folder, "New task");
-		const field = this.settings.statusField;
+		const field = this.board.statusField;
 		const statusValue = status === UNTRIAGED ? "" : status;
 
 		const content = [
@@ -88,7 +88,7 @@ export class TaskService {
 
 	/** Updates a task status without altering the rest of the frontmatter. */
 	async updateStatus(file: TFile, newStatus: string): Promise<void> {
-		const field = this.settings.statusField;
+		const field = this.board.statusField;
 		const value = newStatus === UNTRIAGED ? "" : newStatus;
 		await this.updateFields(file, { [field]: value });
 	}

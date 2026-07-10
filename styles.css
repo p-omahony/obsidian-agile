@@ -205,6 +205,112 @@
 	background-color: var(--background-modifier-hover);
 }
 
+/* ===== Board toolbar (inline settings) ===== */
+.agile-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 12px;
+	flex: 0 0 auto;
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: 0.85em;
+	color: var(--text-muted);
+	flex-wrap: wrap;
+}
+
+.agile-toolbar-item {
+	cursor: pointer;
+	padding: 2px 6px;
+	border-radius: 4px;
+	white-space: nowrap;
+}
+
+.agile-toolbar-item:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+.agile-toolbar-name {
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+.agile-toolbar-value {
+	color: var(--text-normal);
+}
+
+.agile-toolbar-sep {
+	width: 1px;
+	height: 16px;
+	background-color: var(--background-modifier-border);
+}
+
+.agile-toolbar-spacer {
+	flex: 1 1 auto;
+}
+
+.agile-inline-input {
+	font: inherit;
+	color: var(--text-normal);
+	background-color: var(--background-primary);
+	border: 1px solid var(--interactive-accent);
+	border-radius: 4px;
+	padding: 1px 4px;
+	max-width: 180px;
+}
+
+/* ===== Inline column editing ===== */
+.agile-column-header {
+	cursor: grab;
+}
+
+.agile-column-actions {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-left: auto;
+	margin-right: 6px;
+	opacity: 0;
+	transition: opacity 0.1s ease;
+}
+
+.agile-column-header:hover .agile-column-actions {
+	opacity: 1;
+}
+
+.agile-column-edit,
+.agile-column-delete {
+	cursor: pointer;
+	color: var(--text-muted);
+	font-size: 0.85em;
+	padding: 0 2px;
+}
+
+.agile-column-edit:hover {
+	color: var(--text-normal);
+}
+
+.agile-column-delete:hover {
+	color: var(--text-error);
+}
+
+.agile-add-column {
+	flex: 0 0 160px;
+	align-self: flex-start;
+	padding: 10px;
+	text-align: center;
+	color: var(--text-muted);
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: 8px;
+	cursor: pointer;
+	font-size: 0.85em;
+}
+
+.agile-add-column:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
 /* ===== Task edit modal ===== */
 .agile-edit-modal h3 {
 	margin-top: 0;

@@ -8,36 +8,60 @@
 	flex-direction: column;
 }
 
-/* ===== Toolbar (Board / Timeline switch) ===== */
-.agile-toolbar {
+/* ===== Collapsible sections (Board + Timeline stacked) ===== */
+.agile-section {
 	display: flex;
-	padding: 8px 12px 0;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+}
+
+.agile-section-board {
+	flex-grow: 3;
+}
+
+.agile-section-timeline {
+	flex-grow: 2;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.agile-section.is-collapsed {
 	flex: 0 0 auto;
 }
 
-.agile-toolbar-switch {
-	display: inline-flex;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 8px;
-	overflow: hidden;
+.agile-section.is-collapsed .agile-section-body {
+	display: none;
 }
 
-.agile-toolbar-btn {
-	padding: 4px 14px;
-	font-size: 0.85em;
+.agile-section-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
 	cursor: pointer;
+	font-weight: 600;
 	color: var(--text-muted);
-	background-color: var(--background-primary);
+	user-select: none;
+	flex: 0 0 auto;
 }
 
-.agile-toolbar-btn:hover {
-	background-color: var(--background-modifier-hover);
+.agile-section-header:hover {
 	color: var(--text-normal);
 }
 
-.agile-toolbar-btn.is-active {
-	background-color: var(--interactive-accent);
-	color: var(--text-on-accent);
+.agile-section-chevron {
+	transition: transform 0.1s ease;
+}
+
+.agile-section.is-collapsed .agile-section-chevron {
+	transform: rotate(-90deg);
+}
+
+.agile-section-body {
+	flex: 1 1 auto;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
 }
 
 .agile-board {

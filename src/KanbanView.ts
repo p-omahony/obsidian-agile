@@ -10,8 +10,8 @@ import type { Column, Task } from "./types";
 
 export const VIEW_TYPE_KANBAN = "agile-kanban-view";
 
-/** Which display the view is showing. */
-type ViewMode = "board" | "timeline";
+/** Collapsible sections shown together in the view. */
+type SectionKey = "board" | "timeline";
 
 export class KanbanView extends ItemView {
 	private plugin: AgilePlugin;
@@ -19,8 +19,8 @@ export class KanbanView extends ItemView {
 	private sortables: Sortable[] = [];
 	/** Which board this view displays (persisted in the view state). */
 	boardId = "";
-	/** Active display mode (persisted in the view state). */
-	mode: ViewMode = "board";
+	/** Collapsed state of each section (persisted in the view state). */
+	private collapsed: Record<SectionKey, boolean> = { board: false, timeline: false };
 	/** Debounced re-render, reused for vault/cache events. */
 	private scheduleRender = debounce(() => this.render(), 200, true);
 
@@ -42,13 +42,16 @@ export class KanbanView extends ItemView {
 	}
 
 	getState(): Record<string, unknown> {
-		return { ...super.getState(), boardId: this.boardId, mode: this.mode };
+		return { ...super.getState(), boardId: this.boardId, collapsed: { ...this.collapsed } };
 	}
 
 	async setState(state: unknown, result: unknown): Promise<void> {
-		const s = state as { boardId?: string; mode?: ViewMode } | null;
+		const s = state as { boardId?: string; collapsed?: Partial<Record<SectionKey, unknown>> } | null;
 		if (typeof s?.boardId === "string") this.boardId = s.boardId;
-		if (s?.mode === "board" || s?.mode === "timeline") this.mode = s.mode;
+		this.collapsed = {
+			board: s?.collapsed?.board === true,
+			timeline: s?.collapsed?.timeline === true,
+		};
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		await super.setState(state as any, result as any);
 		this.render();
@@ -121,38 +124,43 @@ export class KanbanView extends ItemView {
 		if (!board) return;
 		this.service = new TaskService(this.app, board);
 
-		this.renderToolbar(root);
-
 		const tasks = this.service.getTasks();
-		if (this.mode === "timeline") {
-			const timelineEl = root.createDiv();
-			renderTimeline(timelineEl, tasks, board, (task) => this.openTask(task, board));
-		} else {
-			const boardEl = root.createDiv({ cls: "agile-board" });
+
+		this.renderSection(root, "board", "Board", (body) => {
+			const boardEl = body.createDiv({ cls: "agile-board" });
 			for (const col of this.buildColumns(tasks, board)) {
 				this.renderColumn(boardEl, col, board);
 			}
-		}
+		});
+
+		this.renderSection(root, "timeline", "Timeline", (body) => {
+			const timelineEl = body.createDiv();
+			renderTimeline(timelineEl, tasks, board, (task) => this.openTask(task, board));
+		});
 	}
 
-	/** Renders the Board / Timeline segmented switch. */
-	private renderToolbar(root: HTMLElement): void {
-		const toolbar = root.createDiv({ cls: "agile-toolbar" });
-		const group = toolbar.createDiv({ cls: "agile-toolbar-switch" });
+	/** Renders one collapsible section (a clickable header + a body). */
+	private renderSection(
+		root: HTMLElement,
+		key: SectionKey,
+		label: string,
+		buildBody: (body: HTMLElement) => void
+	): void {
+		const section = root.createDiv({ cls: `agile-section agile-section-${key}` });
+		if (this.collapsed[key]) section.addClass("is-collapsed");
 
-		const makeButton = (mode: ViewMode, label: string) => {
-			const btn = group.createDiv({ cls: "agile-toolbar-btn", text: label });
-			if (this.mode === mode) btn.addClass("is-active");
-			btn.addEventListener("click", () => {
-				if (this.mode === mode) return;
-				this.mode = mode;
-				this.app.workspace.requestSaveLayout();
-				this.render();
-			});
-		};
+		const header = section.createDiv({ cls: "agile-section-header" });
+		header.createSpan({ cls: "agile-section-chevron", text: "▾" });
+		header.createSpan({ text: label });
 
-		makeButton("board", "Board");
-		makeButton("timeline", "Timeline");
+		const body = section.createDiv({ cls: "agile-section-body" });
+		buildBody(body);
+
+		header.addEventListener("click", () => {
+			this.collapsed[key] = !this.collapsed[key];
+			section.toggleClass("is-collapsed", this.collapsed[key]);
+			this.app.workspace.requestSaveLayout();
+		});
 	}
 
 	/** Opens the edit modal for a task. */

@@ -1,6 +1,6 @@
 import { Menu, Plugin } from "obsidian";
 import { KanbanView, VIEW_TYPE_KANBAN } from "./KanbanView";
-import { AgileSettings, AgileSettingTab, migrateSettings } from "./settings";
+import { AgileSettings, migrateSettings } from "./settings";
 
 export default class AgilePlugin extends Plugin {
 	settings: AgileSettings;
@@ -22,8 +22,6 @@ export default class AgilePlugin extends Plugin {
 			name: "Open Agile Kanban board",
 			callback: () => this.openBoardPicker(),
 		});
-
-		this.addSettingTab(new AgileSettingTab(this.app, this));
 	}
 
 	onunload(): void {

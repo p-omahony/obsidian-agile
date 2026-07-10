@@ -53,6 +53,24 @@
 	transition: transform 0.1s ease;
 }
 
+.agile-section-actions {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.agile-section-gear {
+	cursor: pointer;
+	padding: 0 4px;
+	border-radius: 4px;
+}
+
+.agile-section-gear:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
 .agile-section.is-collapsed .agile-section-chevron {
 	transform: rotate(-90deg);
 }

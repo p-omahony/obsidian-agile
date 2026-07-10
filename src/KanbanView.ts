@@ -139,10 +139,20 @@ export class KanbanView extends ItemView {
 			this.enableColumnReorder(boardEl, board);
 		});
 
-		this.renderSection(root, "timeline", "Timeline", (body) => {
-			const timelineEl = body.createDiv();
-			renderTimeline(timelineEl, tasks, board, (task) => this.openTask(task, board));
-		});
+		this.renderSection(
+			root,
+			"timeline",
+			"Timeline",
+			(body) => {
+				const timelineEl = body.createDiv();
+				renderTimeline(timelineEl, tasks, board, (task) => this.openTask(task, board));
+			},
+			(actions) => {
+				const gear = actions.createSpan({ cls: "agile-section-gear", text: "⚙" });
+				gear.setAttribute("aria-label", "Timeline settings");
+				gear.addEventListener("click", (e) => this.openTimelineMenu(e, board));
+			}
+		);
 	}
 
 	/** Board-level settings, editable inline at the top of the view. */
@@ -320,11 +330,16 @@ export class KanbanView extends ItemView {
 					this.plugin.saveSettings();
 				})
 		);
-		menu.addSeparator();
+		menu.showAtMouseEvent(evt);
+	}
+
+	/** Settings menu specific to the timeline section. */
+	private openTimelineMenu(evt: MouseEvent, board: BoardConfig): void {
+		const menu = new Menu();
 		const scales: { value: TimelineScale; label: string }[] = [
-			{ value: "day", label: "Timeline : Jour" },
-			{ value: "week", label: "Timeline : Semaine" },
-			{ value: "month", label: "Timeline : Mois" },
+			{ value: "day", label: "Échelle : Jour" },
+			{ value: "week", label: "Échelle : Semaine" },
+			{ value: "month", label: "Échelle : Mois" },
 		];
 		for (const s of scales) {
 			menu.addItem((item) =>
@@ -379,7 +394,8 @@ export class KanbanView extends ItemView {
 		root: HTMLElement,
 		key: SectionKey,
 		label: string,
-		buildBody: (body: HTMLElement) => void
+		buildBody: (body: HTMLElement) => void,
+		buildHeaderActions?: (actions: HTMLElement) => void
 	): void {
 		const section = root.createDiv({ cls: `agile-section agile-section-${key}` });
 		if (this.collapsed[key]) section.addClass("is-collapsed");
@@ -387,6 +403,13 @@ export class KanbanView extends ItemView {
 		const header = section.createDiv({ cls: "agile-section-header" });
 		header.createSpan({ cls: "agile-section-chevron", text: "▾" });
 		header.createSpan({ text: label });
+
+		if (buildHeaderActions) {
+			const actions = header.createDiv({ cls: "agile-section-actions" });
+			// Interacting with header controls must not toggle the section.
+			actions.addEventListener("click", (e) => e.stopPropagation());
+			buildHeaderActions(actions);
+		}
 
 		const body = section.createDiv({ cls: "agile-section-body" });
 		buildBody(body);

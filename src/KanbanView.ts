@@ -69,7 +69,8 @@ export class KanbanView extends ItemView {
 		this.registerEvent(this.app.vault.on("create", this.scheduleRender));
 		this.registerEvent(this.app.vault.on("delete", this.scheduleRender));
 		this.registerEvent(this.app.vault.on("rename", this.scheduleRender));
-		this.render();
+		// The initial render is driven by setState() (called with our boardId),
+		// so we don't render here to avoid building the board twice on open.
 	}
 
 	async onClose(): Promise<void> {

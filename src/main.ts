@@ -62,9 +62,11 @@ export default class AgilePlugin extends Plugin {
 	async activateView(boardId: string): Promise<void> {
 		const { workspace } = this.app;
 
+		// Read boardId from the persisted view state, not leaf.view: a leaf that
+		// hasn't been activated yet exposes a DeferredView whose boardId is undefined.
 		const existing = workspace
 			.getLeavesOfType(VIEW_TYPE_KANBAN)
-			.find((leaf) => (leaf.view as KanbanView).boardId === boardId);
+			.find((leaf) => leaf.getViewState().state?.boardId === boardId);
 
 		if (existing) {
 			workspace.revealLeaf(existing);

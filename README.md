@@ -1,42 +1,42 @@
 # Agile — Notion-style agile project management for Obsidian
 
-Un tableau Kanban et une gestion de tâches façon Notion, directement dans Obsidian.
-Le principe : **une tâche est une note Markdown avec du frontmatter**. Le tableau
-Kanban est une *vue* sur ces notes — il n'y a pas de base de données séparée.
-Déplacer une carte réécrit le frontmatter de la note.
+A Kanban board and Notion-style task management, right inside Obsidian.
+The core idea: **a task is a Markdown note with frontmatter**. The Kanban
+board is a *view* over those notes — there is no separate database.
+Moving a card rewrites the note's frontmatter.
 
-## Fonctionnalités
+## Features
 
-- Tableau Kanban avec glisser-déposer (les colonnes sont vos statuts, configurables).
-- Édition des propriétés façon Notion (priorité, projet, assigné, échéance…).
-- Vue timeline et filtres par propriété.
-- Édition en ligne du tableau (colonnes, réglages) sans quitter la vue.
-- Aucune duplication : vos notes restent la seule source de vérité.
+- Kanban board with drag & drop (columns are your statuses, fully configurable).
+- Notion-style property editing (priority, project, assignee, due date…).
+- Timeline view and per-property filters.
+- Inline board editing (columns, settings) without leaving the view.
+- No duplication: your notes remain the single source of truth.
 
 ## Installation
 
-### Via BRAT (recommandé, avant publication au store)
+### Via BRAT (recommended, before store publication)
 
-1. Installez le plugin **BRAT** (Obsidian42 - BRAT) depuis les plugins communautaires.
-2. `BRAT: Add a beta plugin for testing` → collez l'URL de ce dépôt :
+1. Install the **BRAT** plugin (Obsidian42 - BRAT) from the community plugins.
+2. `BRAT: Add a beta plugin for testing` → paste this repository's URL:
    `https://github.com/p-omahony/obsidian-agile`
-3. Activez **Agile** dans Paramètres → Plugins tiers.
+3. Enable **Agile** in Settings → Community plugins.
 
-BRAT gère ensuite les mises à jour automatiquement à chaque nouvelle release.
+BRAT then handles updates automatically on every new release.
 
-### Manuelle
+### Manual
 
-Copiez `main.js`, `manifest.json` et `styles.css` (depuis la dernière release)
-dans `<vault>/.obsidian/plugins/agile/`, puis activez le plugin.
+Copy `main.js`, `manifest.json` and `styles.css` (from the latest release)
+into `<vault>/.obsidian/plugins/agile/`, then enable the plugin.
 
-## Développement
+## Development
 
 ```bash
-npm install     # installe les dépendances (bundle sortablejs dans main.js)
-npm run dev     # esbuild watch, sourcemap inline → main.js
-npm run build   # typecheck tsc + bundle de production minifié
+npm install     # install dependencies (bundles sortablejs into main.js)
+npm run dev     # esbuild watch, inline sourcemap → main.js
+npm run build   # tsc typecheck + minified production bundle
 ```
 
-## Licence
+## License
 
-MIT — voir [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

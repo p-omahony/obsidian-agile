@@ -277,6 +277,154 @@
 	max-width: 180px;
 }
 
+/* ===== Filter bar ===== */
+.agile-filter-bar {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 12px;
+	flex: 0 0 auto;
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: 0.82em;
+	color: var(--text-muted);
+	flex-wrap: wrap;
+}
+
+.agile-filter-label {
+	white-space: nowrap;
+}
+
+.agile-filter-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background-color: var(--background-modifier-hover);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 12px;
+	padding: 1px 4px 1px 8px;
+}
+
+.agile-filter-chip-body {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 4px;
+	cursor: pointer;
+}
+
+.agile-filter-chip-name {
+	color: var(--text-muted);
+}
+
+.agile-filter-chip-value {
+	color: var(--text-normal);
+	font-weight: 500;
+}
+
+.agile-filter-chip-remove {
+	cursor: pointer;
+	color: var(--text-muted);
+	border-radius: 50%;
+	width: 16px;
+	height: 16px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.9em;
+}
+
+.agile-filter-chip-remove:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-border);
+}
+
+.agile-filter-add,
+.agile-filter-clear {
+	cursor: pointer;
+	padding: 2px 6px;
+	border-radius: 4px;
+	white-space: nowrap;
+}
+
+.agile-filter-add:hover,
+.agile-filter-clear:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+.agile-filter-clear {
+	margin-left: auto;
+}
+
+/* ===== Filter value popover (attached to document.body) ===== */
+.agile-filter-popover {
+	position: fixed;
+	z-index: var(--layer-menu, 100);
+	min-width: 180px;
+	max-width: 260px;
+	max-height: 320px;
+	overflow-y: auto;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	box-shadow: var(--shadow-s);
+	padding: 6px;
+	font-size: 0.85em;
+}
+
+.agile-filter-popover-header {
+	font-weight: 600;
+	color: var(--text-normal);
+	padding: 2px 6px 6px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-bottom: 4px;
+}
+
+.agile-filter-option {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 6px;
+	border-radius: 4px;
+	cursor: pointer;
+	color: var(--text-normal);
+}
+
+.agile-filter-option:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.agile-filter-option input {
+	cursor: pointer;
+}
+
+.agile-filter-empty {
+	color: var(--text-muted);
+	padding: 4px 6px;
+}
+
+.agile-filter-dates {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 2px;
+}
+
+.agile-filter-date-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.agile-filter-date-row input {
+	font: inherit;
+	color: var(--text-normal);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	padding: 1px 4px;
+}
+
 /* ===== Inline column editing ===== */
 .agile-column-header {
 	cursor: grab;

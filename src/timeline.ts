@@ -14,7 +14,7 @@ const PX_PER_DAY: Record<TimelineScale, number> = { day: 34, week: 14, month: 5 
 const LANE_HEIGHT = 40;
 
 /** Parses a `YYYY-MM-DD` frontmatter value into a local, time-stripped Date. */
-function parseDate(value?: string): Date | null {
+export function parseDate(value?: string): Date | null {
 	if (!value) return null;
 	const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
 	if (!m) return null;

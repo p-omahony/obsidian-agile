@@ -7,6 +7,19 @@ import { UNTRIAGED, TaskService } from "./taskService";
 import { TaskEditModal } from "./TaskEditModal";
 import { renderTimeline } from "./timeline";
 import { applyBadgeColor } from "./colors";
+import {
+	applyFilters,
+	baseValues,
+	CATEGORICAL_FILTERS,
+	DATE_FILTERS,
+	distinctValues,
+	fieldActive,
+	FILTER_EMPTY,
+	FILTER_EMPTY_LABEL,
+	FILTER_LABELS,
+	isFilterActive,
+} from "./filters";
+import type { BoardFilters, CategoricalFilter, DateFilter } from "./filters";
 import type { Column, Task } from "./types";
 
 export const VIEW_TYPE_KANBAN = "agile-kanban-view";
@@ -22,6 +35,10 @@ export class KanbanView extends ItemView {
 	boardId = "";
 	/** Collapsed state of each section (persisted in the view state). */
 	private collapsed: Record<SectionKey, boolean> = { board: false, timeline: false };
+	/** Active board/timeline filters (persisted in the view state). */
+	private filters: BoardFilters = {};
+	/** The open value-selection popover, if any (attached to document.body). */
+	private popover: { el: HTMLElement; cleanup: () => void } | null = null;
 	/** Debounced re-render, reused for vault/cache events. */
 	private scheduleRender = debounce(() => this.render(), 200, true);
 
@@ -43,16 +60,26 @@ export class KanbanView extends ItemView {
 	}
 
 	getState(): Record<string, unknown> {
-		return { ...super.getState(), boardId: this.boardId, collapsed: { ...this.collapsed } };
+		return {
+			...super.getState(),
+			boardId: this.boardId,
+			collapsed: { ...this.collapsed },
+			filters: { ...this.filters },
+		};
 	}
 
 	async setState(state: unknown, result: unknown): Promise<void> {
-		const s = state as { boardId?: string; collapsed?: Partial<Record<SectionKey, unknown>> } | null;
+		const s = state as {
+			boardId?: string;
+			collapsed?: Partial<Record<SectionKey, unknown>>;
+			filters?: unknown;
+		} | null;
 		if (typeof s?.boardId === "string") this.boardId = s.boardId;
 		this.collapsed = {
 			board: s?.collapsed?.board === true,
 			timeline: s?.collapsed?.timeline === true,
 		};
+		this.filters = this.sanitizeFilters(s?.filters);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		await super.setState(state as any, result as any);
 		this.render();
@@ -62,6 +89,28 @@ export class KanbanView extends ItemView {
 	private resolveBoard(): BoardConfig | undefined {
 		const boards = this.plugin.settings.boards;
 		return boards.find((b) => b.id === this.boardId) ?? boards[0];
+	}
+
+	/** Coerces persisted (untrusted) view state into a well-formed BoardFilters. */
+	private sanitizeFilters(raw: unknown): BoardFilters {
+		const src = (raw ?? {}) as Record<string, unknown>;
+		const out: BoardFilters = {};
+		for (const field of CATEGORICAL_FILTERS) {
+			const v = src[field];
+			if (Array.isArray(v)) {
+				const values = v.filter((x): x is string => typeof x === "string");
+				if (values.length > 0) out[field] = values;
+			}
+		}
+		for (const field of DATE_FILTERS) {
+			const v = src[field] as { from?: unknown; to?: unknown } | undefined;
+			if (v && typeof v === "object") {
+				const from = typeof v.from === "string" ? v.from : undefined;
+				const to = typeof v.to === "string" ? v.to : undefined;
+				if (from || to) out[field] = { from, to };
+			}
+		}
+		return out;
 	}
 
 	async onOpen(): Promise<void> {
@@ -76,6 +125,7 @@ export class KanbanView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.destroySortables();
+		this.closePopover();
 	}
 
 	/** Forces a re-render (e.g. after settings change). */
@@ -126,9 +176,12 @@ export class KanbanView extends ItemView {
 		if (!board) return;
 		this.service = new TaskService(this.app, board);
 
-		const tasks = this.service.getTasks();
+		// Full task list feeds the filter menus; the filtered subset feeds both views.
+		const allTasks = this.service.getTasks();
+		const tasks = applyFilters(allTasks, this.filters);
 
 		this.renderToolbar(root, board);
+		this.renderFilterBar(root, board, allTasks);
 
 		this.renderSection(root, "board", "Board", (body) => {
 			const boardEl = body.createDiv({ cls: "agile-board" });
@@ -353,6 +406,209 @@ export class KanbanView extends ItemView {
 			);
 		}
 		menu.showAtMouseEvent(evt);
+	}
+
+	/** Bar of active-filter chips + a "+ Filtre" affordance, below the toolbar. */
+	private renderFilterBar(root: HTMLElement, board: BoardConfig, allTasks: Task[]): void {
+		const bar = root.createDiv({ cls: "agile-filter-bar" });
+
+		bar.createSpan({ cls: "agile-filter-label", text: "Filtres :" });
+
+		for (const field of [...CATEGORICAL_FILTERS, ...DATE_FILTERS]) {
+			if (fieldActive(this.filters, field)) {
+				this.renderFilterChip(bar, board, field, allTasks);
+			}
+		}
+
+		const add = bar.createSpan({ cls: "agile-filter-add", text: "+ Filtre" });
+		add.addEventListener("click", (e) => this.openFilterAddMenu(e, board, allTasks));
+
+		if (isFilterActive(this.filters)) {
+			const clear = bar.createSpan({ cls: "agile-filter-clear", text: "Effacer" });
+			clear.addEventListener("click", () => {
+				this.filters = {};
+				this.commitFilterChange();
+			});
+		}
+	}
+
+	/** One chip summarizing an active filter; body opens its editor, ✕ clears it. */
+	private renderFilterChip(
+		bar: HTMLElement,
+		board: BoardConfig,
+		field: CategoricalFilter | DateFilter,
+		allTasks: Task[]
+	): void {
+		const chip = bar.createSpan({ cls: "agile-filter-chip" });
+		const body = chip.createSpan({ cls: "agile-filter-chip-body" });
+		body.createSpan({ cls: "agile-filter-chip-name", text: FILTER_LABELS[field] });
+		body.createSpan({ cls: "agile-filter-chip-value", text: this.filterSummary(field) });
+		body.addEventListener("click", () => this.openFilterPopover(body, board, field, allTasks));
+
+		const del = chip.createSpan({ cls: "agile-filter-chip-remove", text: "✕" });
+		del.setAttribute("aria-label", `Effacer le filtre ${FILTER_LABELS[field]}`);
+		del.addEventListener("click", (e) => {
+			e.stopPropagation();
+			delete this.filters[field];
+			this.commitFilterChange();
+		});
+	}
+
+	/** Short text describing the current selection for a chip. */
+	private filterSummary(field: CategoricalFilter | DateFilter): string {
+		if (field === "start" || field === "due") {
+			const range = this.filters[field];
+			if (!range) return "";
+			if (range.from && range.to) return `${range.from} → ${range.to}`;
+			if (range.from) return `≥ ${range.from}`;
+			if (range.to) return `≤ ${range.to}`;
+			return "";
+		}
+		const values = this.filters[field] ?? [];
+		return values.map((v) => (v === FILTER_EMPTY ? FILTER_EMPTY_LABEL : v)).join(", ");
+	}
+
+	/** Menu to add a filter on a property not yet active. */
+	private openFilterAddMenu(evt: MouseEvent, board: BoardConfig, allTasks: Task[]): void {
+		const menu = new Menu();
+		let any = false;
+		for (const field of [...CATEGORICAL_FILTERS, ...DATE_FILTERS]) {
+			if (fieldActive(this.filters, field)) continue;
+			any = true;
+			menu.addItem((item) =>
+				item.setTitle(FILTER_LABELS[field]).onClick(() => {
+					// Anchor the popover on the "+ Filtre" affordance itself.
+					const anchor = evt.target as HTMLElement;
+					this.openFilterPopover(anchor, board, field, allTasks);
+				})
+			);
+		}
+		if (!any) {
+			menu.addItem((item) => item.setTitle("Tous les filtres sont actifs").setDisabled(true));
+		}
+		menu.showAtMouseEvent(evt);
+	}
+
+	/** Opens the value-selection popover for a field, attached to document.body. */
+	private openFilterPopover(
+		anchor: HTMLElement,
+		board: BoardConfig,
+		field: CategoricalFilter | DateFilter,
+		allTasks: Task[]
+	): void {
+		this.closePopover();
+
+		const el = document.body.createDiv({ cls: "agile-filter-popover" });
+		el.createDiv({ cls: "agile-filter-popover-header", text: FILTER_LABELS[field] });
+
+		if (field === "start" || field === "due") {
+			this.buildDatePopover(el, field);
+		} else {
+			this.buildValuePopover(el, board, field, allTasks);
+		}
+
+		// Position under the anchor, kept within the viewport.
+		const rect = anchor.getBoundingClientRect();
+		el.style.top = `${rect.bottom + 4}px`;
+		el.style.left = `${Math.min(rect.left, window.innerWidth - 260)}px`;
+
+		// Close on outside mousedown / Escape. mousedown avoids self-closing on the
+		// click that opened it; the popover survives render() since it lives on body.
+		const onDocClick = (e: MouseEvent) => {
+			if (!el.contains(e.target as Node)) this.closePopover();
+		};
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") this.closePopover();
+		};
+		document.addEventListener("mousedown", onDocClick);
+		document.addEventListener("keydown", onKey);
+		this.popover = {
+			el,
+			cleanup: () => {
+				document.removeEventListener("mousedown", onDocClick);
+				document.removeEventListener("keydown", onKey);
+			},
+		};
+	}
+
+	/** Checkbox list for a categorical filter. */
+	private buildValuePopover(
+		el: HTMLElement,
+		board: BoardConfig,
+		field: CategoricalFilter,
+		allTasks: Task[]
+	): void {
+		const values = distinctValues(allTasks, field, baseValues(field, board.statuses));
+		if (values.length === 0) {
+			el.createDiv({ cls: "agile-filter-empty", text: "Aucune valeur" });
+			return;
+		}
+		for (const value of values) {
+			const row = el.createDiv({ cls: "agile-filter-option" });
+			const cb = row.createEl("input");
+			cb.type = "checkbox";
+			cb.checked = (this.filters[field] ?? []).includes(value);
+			row.createSpan({ text: value === FILTER_EMPTY ? FILTER_EMPTY_LABEL : value });
+			const toggle = () => this.toggleValue(field, value, cb.checked);
+			cb.addEventListener("change", toggle);
+			row.addEventListener("click", (e) => {
+				if (e.target !== cb) {
+					cb.checked = !cb.checked;
+					toggle();
+				}
+			});
+		}
+	}
+
+	/** Adds/removes a value from a categorical filter, then re-renders live. */
+	private toggleValue(field: CategoricalFilter, value: string, on: boolean): void {
+		const current = new Set(this.filters[field] ?? []);
+		if (on) current.add(value);
+		else current.delete(value);
+		if (current.size > 0) this.filters[field] = [...current];
+		else delete this.filters[field];
+		this.commitFilterChange();
+	}
+
+	/** Two date inputs (from / to) for a date-range filter. */
+	private buildDatePopover(el: HTMLElement, field: DateFilter): void {
+		const range = this.filters[field] ?? {};
+		const wrap = el.createDiv({ cls: "agile-filter-dates" });
+
+		const mkInput = (label: string, bound: "from" | "to"): void => {
+			const row = wrap.createDiv({ cls: "agile-filter-date-row" });
+			row.createSpan({ text: label });
+			const input = row.createEl("input");
+			input.type = "date";
+			input.value = range[bound] ?? "";
+			input.addEventListener("change", () => this.setDateBound(field, bound, input.value));
+		};
+		mkInput("De", "from");
+		mkInput("À", "to");
+	}
+
+	/** Sets one bound of a date filter, clearing the filter when both are empty. */
+	private setDateBound(field: DateFilter, bound: "from" | "to", value: string): void {
+		const range = { ...(this.filters[field] ?? {}) };
+		if (value) range[bound] = value;
+		else delete range[bound];
+		if (range.from || range.to) this.filters[field] = range;
+		else delete this.filters[field];
+		this.commitFilterChange();
+	}
+
+	/** Removes the open popover and its document listeners, if any. */
+	private closePopover(): void {
+		if (!this.popover) return;
+		this.popover.cleanup();
+		this.popover.el.remove();
+		this.popover = null;
+	}
+
+	/** Persists the filter change in the view state and re-renders both views. */
+	private commitFilterChange(): void {
+		this.app.workspace.requestSaveLayout();
+		this.render();
 	}
 
 	/** The "+ column" affordance appended after the last column. */

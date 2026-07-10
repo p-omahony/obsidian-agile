@@ -196,7 +196,7 @@ export class KanbanView extends ItemView {
 		const addBtn = colEl.createDiv({ cls: "agile-add-card", text: "+ New task" });
 		addBtn.addEventListener("click", () => this.onCreate(col.status));
 
-		this.enableDragAndDrop(list);
+		this.enableDragAndDrop(list, board);
 	}
 
 	private renderCard(list: HTMLElement, task: Task, board: BoardConfig): void {
@@ -237,9 +237,11 @@ export class KanbanView extends ItemView {
 		card.addEventListener("click", () => this.openTask(task, board));
 	}
 
-	private enableDragAndDrop(list: HTMLElement): void {
+	private enableDragAndDrop(list: HTMLElement, board: BoardConfig): void {
 		const sortable = Sortable.create(list, {
-			group: "agile-kanban",
+			// Scope the group to this board so cards can't be dragged between two
+			// boards opened side by side (which would write a foreign status).
+			group: `agile-kanban-${board.id}`,
 			animation: 150,
 			ghostClass: "agile-card-ghost",
 			onEnd: (evt: Sortable.SortableEvent) => {

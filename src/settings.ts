@@ -78,7 +78,9 @@ export function migrateSettings(raw: unknown): AgileSettings {
 	const data = (raw ?? {}) as Partial<AgileSettings> & LegacySettings;
 
 	if (Array.isArray(data.boards) && data.boards.length > 0) {
-		return { boards: data.boards };
+		// Backfill fields added after a board was persisted (e.g. colors,
+		// timelineScale) so later reads never hit an undefined key.
+		return { boards: data.boards.map((b) => ({ ...defaultBoard(), ...b })) };
 	}
 
 	if (Array.isArray(data.statuses)) {
